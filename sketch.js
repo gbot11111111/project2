@@ -12,13 +12,16 @@ let Cnotes = [];
 let Vnotes = [];
 
 let selectedSong;
-let musica_electronica, heart_pop, parties;
+let musica_electronica, heart_pop, harajuku_girl, i_dont_go_to_parties;
 
 //score
 let score = 0;
 
 function preload() {
-  musica_electronica = loadSound("musica_electronica.wav");
+  musica_electronica = loadSound("musica_electronica.wav"); //120bpm
+  heart_pop = loadSound("heart_pop.wav"); //142bpm
+  harajuku_girl = loadSound("harajuku_girl.wav"); //139bpm
+  i_dont_go_to_parties = loadSound("i_dont_go_to_parties.wav"); //134bpm
 }
 
 class note{
@@ -73,6 +76,7 @@ class note{
       }
       else if (this.y < 425 && this.y > 395){
         console.log("meh")
+        score+=5;
       }
       else if (this.y > 425 && this.y < 455){
         console.log("good");
@@ -212,14 +216,27 @@ function draw() {
   stroke(0);
   fill(255);
 
+  let songArray;
+  selectedSong = heart_pop;
 
-  selectedSong = musica_electronica;
-  let songArray = array_m_e;
-
+  if (selectedSong == musica_electronica){
+    songArray = array_m_e;
+  }
+  else if (selectedSong == heart_pop){
+    songArray = array_h_p;
+  }
+  else if (selectedSong == harajuku_girl){
+    songArray = array_h_g;
+  }
+  else if (selectedSong == i_dont_go_to_parties){
+    songArray = array_idgtp;
+  }
+  
+  
   if (songPlay == true && 4 < beatIndex <= songArray.length){
     countBeats(songArray, selectedSong);
     drawSong(); 
-    text("score: " + score,10,30,)
+    text("score: " + score,10,30)
   }
   
 }
@@ -233,7 +250,7 @@ function keyPressed() {
     if (songPlay == false){
       songPlay = true;
       beatIndex = 0;
-
+      score = 0;
       songStartTime = millis();
 
     } else {
