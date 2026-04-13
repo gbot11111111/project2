@@ -1,23 +1,21 @@
-let array_m_e = [120, //BPM of the song
-  0,0,0,0,
-  1,0,0,0,2,0,0,0,3,0,0,0,4,0,0,0,
-  1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,
-  3,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 //1z 2x 3c 4v
-
 let songPlay = false;
 
 //timing variables
-let currentBeat = 1;
-let metronome = 1;
-
-let m_lastBeat = 0;
-let s_lastBeat = 0;
+let songStartTime;
+let lastBeatIndex = -1;
 
 //notes + songs
-let notes = [];
-let musica_electronica;
+let Znotes = [];
+let Xnotes = [];
+let Cnotes = [];
+let Vnotes = [];
+
+let selectedSong;
+let musica_electronica, heart_pop, parties;
+
+//score
+let score = 0;
 
 function preload() {
   musica_electronica = loadSound("musica_electronica.wav");
@@ -40,22 +38,64 @@ class note{
     
     this.y = 0;
     this.timer = 0;
-
-    this.fourthNoteMs = round(60000 / bpm);
+    this.noteType = noteType;
+    this.fourthNoteMs = (60 / bpm * 4) * 1000;
+    this.spawnTime = millis();
+    this.showing = true;
   }
 
-  show(){
-    rect(this.x, map(this.timer, 0, this.fourthNoteMs, 0, height-100), width/4,20);
+  show(){ 
+    if (this.y < 475){
+      rect(this.x, this.y, width/4,20);
+    }
+    else{
+
+      if (this.showing){
+        //miss if y below 475
+        console.log("miss");
+        score-=10;
+        this.showing = false;
+      }
+    }
   }
 
   fall(){
-    if (this.timer !== this.fourthNoteMs){
-      this.timer++;
-    }
-    else{
-      this.timer = 0;
-      notes.splice(0,1);
-    }
+    this.timer = millis() - this.spawnTime;
+    this.y = map(this.timer, 0, this.fourthNoteMs, 0, height-100);
+  }
+
+  hit(){
+
+      //score feedback
+      if (this.y < 395){
+        console.log("bad");
+        score-=10;
+      }
+      else if (this.y < 425 && this.y > 395){
+        console.log("meh")
+      }
+      else if (this.y > 425 && this.y < 455){
+        console.log("good");
+        score+=10;
+      }
+      else if (this.y > 455 && this.y < 485){
+        console.log("perfect")
+        score+=15;
+      }
+
+      //removing notes from the array
+      if (this.noteType == 1){
+        Znotes.splice(0,1);
+      }
+      else if (this.noteType == 2){
+        Xnotes.splice(0,1);
+      }
+      else if (this.noteType == 3){
+        Cnotes.splice(0,1);
+      }
+      else if (this.noteType == 4){
+        Vnotes.splice(0,1);
+      }
   }
 }
 
@@ -64,118 +104,166 @@ function setup() {
   canvas.parent('gameCanvas');
 
   lastSecond = second();
-
-  setInterval(countBeats, 1); //runs every ms instead of 60fps
-  setInterval(draw, 1); 
 }
 
 //minimize this lmao
-function countBeats(arr){
-  let bpm = 120;
+function countBeats(arr,songFile){
+  let bpm = arr[0];
+  let sixteenth = (60 / bpm / 4) * 1000;
+  let song = songFile;
 
-  if (arr){
-    bpm = arr[0];
+  let beatIndex = Math.floor((millis() - songStartTime) / sixteenth);
+
+  if (songPlay && !song.isPlaying()){
+    song.play();
   }
 
-  //metronome calculations
-  let m_beatInterval = (60 / bpm) * 1000;
-  let currentTime = millis();
-  if (currentTime - m_lastBeat >= m_beatInterval) {
+  if (beatIndex !== lastBeatIndex) {
+    lastBeatIndex = beatIndex;
 
-    // TRIGGER BEAT HERE
-    console.log("beat");
-
-    metronome++;
-
-    if (metronome > 4){
-      metronome = 1;
-    }
-
-    if (songPlay && !musica_electronica.isPlaying()){
-      musica_electronica.play();
-    }
-
-    m_lastBeat = currentTime; // Reset the timer
-  }
-
-  //sixteenth note calculations
-  let s_beatInterval = (60 / bpm/4) * 1000;
-  if (currentTime - s_lastBeat >= s_beatInterval && metronome > 0) {
-
-    // TRIGGER BEAT HERE (create notes)
-
-    let fallingBeat = currentBeat+4;
+    // trigger note spawn here
+    let fallingBeat = beatIndex+4;
 
     if (fallingBeat < arr.length){
 
       if (arr[fallingBeat] == 1){
         let z = new note(1,bpm);
-        notes.push(z);
+        Znotes.push(z);
       }
       else if (arr[fallingBeat] == 2){
         let x = new note(2,bpm);
-        notes.push(x);
+        Xnotes.push(x);
       }
       else if (arr[fallingBeat] == 3){
         let c = new note(3,bpm);
-        notes.push(c);
+        Cnotes.push(c);
       }
       else if (arr[fallingBeat] == 4){
         let v = new note(4,bpm);
-        notes.push(v);
+        Vnotes.push(v);
       }
     }
-
-    currentBeat++;
-    
-    s_lastBeat = currentTime; // Reset the timer
   }
 
-  text('BPM: ' + bpm, 10, 50);
-  text('Metronome: ' + metronome, 10, 70);
-  text('Current Beat: ' + currentBeat, 10, 90);
-  text(notes, 10, 10); 
+  text("beat: " + beatIndex,15,15);
+
 }
 
+//shows, moves, and deletes notes - minimize this
 function drawSong(){
 
-  for (let i = 0; i < notes.length; i++) {
-    notes[i].fall();
-    notes[i].show();
+  for (let i = Znotes.length - 1; i >= 0; i--) {
+    if (Znotes[i].timer >= Znotes[i].fourthNoteMs) {
+      Znotes.splice(i, 1); // remove self when note timer over
+    } else {
+      Znotes[i].fall();
+      Znotes[i].show();
+    }
   }
 
+  for (let i = Xnotes.length - 1; i >= 0; i--) {
+    if (Xnotes[i].timer >= Xnotes[i].fourthNoteMs) {
+      Xnotes.splice(i, 1); // remove self when note timer over
+    } else {
+      Xnotes[i].fall();
+      Xnotes[i].show();
+    }
+  }
+
+  for (let i = Cnotes.length - 1; i >= 0; i--) {
+    if (Cnotes[i].timer >= Cnotes[i].fourthNoteMs) {
+      Cnotes.splice(i, 1); // remove self when note timer over
+    } else {
+      Cnotes[i].fall();
+      Cnotes[i].show();
+    }
+  }
+
+  for (let i = Vnotes.length - 1; i >= 0; i--) {
+    if (Vnotes[i].timer >= Vnotes[i].fourthNoteMs) {
+      Vnotes.splice(i, 1); // remove self when note timer over
+    } else {
+      Vnotes[i].fall();
+      Vnotes[i].show();
+    }
+  }
 }
 
 function draw() {
-  background(220);
+  background(225);
 
+  //rects
   textSize(12);
+  noStroke();
 
-  let song = array_m_e;
+  fill(255,0,0,35);
+  rect(0,0,600,395)
 
-  if (songPlay == true && 4 < currentBeat <= song.length){
-    countBeats(song);
-    drawSong();
-  }
+  fill(255,255,0,35);
+  rect(0,395,600,30)
+
+  fill(0,0,255,35);
+  rect(0,425,600,30)
+
+  fill(0,255,0,35);
+  rect(0,455,600,30)
 
   strokeWeight(2);
-  line(0,height-100,width,height-100);
+  stroke(0);
+  fill(255);
 
+
+  selectedSong = musica_electronica;
+  let songArray = array_m_e;
+
+  if (songPlay == true && 4 < beatIndex <= songArray.length){
+    countBeats(songArray, selectedSong);
+    drawSong(); 
+    text("score: " + score,10,30,)
+  }
+  
 }
 
-//space to start song
+//stopping and starting song, hitting notes
 function keyPressed() {
 
+  //starting and stopping song
   if (keyCode == 32){
+
     if (songPlay == false){
       songPlay = true;
-      currentBeat = 0;
-      metronome = 0;
+      beatIndex = 0;
+
+      songStartTime = millis();
+
     } else {
+
       songPlay = false;
-      musica_electronica.stop();
-      notes = [];
+      selectedSong.stop();
+      
+      Znotes = [];
+      Xnotes = [];
+      Cnotes = [];
+      Vnotes = [];
     }
-    
+  }
+
+  //pressing notes
+  if (songPlay) {
+    if (key === "z" && Znotes.length > 0){
+      Znotes[0].hit();
+    }
+
+    if (key === "x" && Xnotes.length > 0){
+      Xnotes[0].hit();
+    }
+
+    if (key === "c" && Cnotes.length > 0){
+      Cnotes[0].hit();
+    }
+
+    if (key === "v" && Vnotes.length > 0){
+      Vnotes[0].hit();
+    }
   }
 }
